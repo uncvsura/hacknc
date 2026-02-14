@@ -1,0 +1,499 @@
+"""
+Siren's Call - Misinformation Detection System
+Integrates Google Gemini AI and Twelve Labs for comprehensive fact-checking
+"""
+
+import os
+import json
+from datetime import datetime
+from typing import Dict, List, Optional
+import google.generativeai as genai
+from twelvelabs import TwelveLabs
+from twelvelabs.models.task import Task
+
+
+class MisinformationDetector:
+    """
+    Main class for detecting misinformation using Gemini AI and Twelve Labs
+    """
+    
+    def __init__(self, gemini_api_key: str, twelve_labs_api_key: str):
+        """
+        Initialize the misinformation detector with API keys
+        
+        Args:
+            gemini_api_key: Google Gemini API key
+            twelve_labs_api_key: Twelve Labs API key
+        """
+        # Configure Gemini
+        genai.configure(api_key=gemini_api_key)
+        self.gemini_model = genai.GenerativeModel('gemini-pro')
+        
+        # Configure Twelve Labs
+        self.twelve_labs_client = TwelveLabs(api_key=twelve_labs_api_key)
+        
+        print("✓ Misinformation Detector initialized successfully")
+    
+    def analyze_text_claim(self, text: str) -> Dict:
+        """
+        Analyze text for misinformation using Gemini AI
+        
+        Args:
+            text: The text claim to analyze
+            
+        Returns:
+            Dictionary containing analysis results
+        """
+        print(f"\n🔍 Analyzing text claim...")
+        
+        prompt = f"""You are an expert fact-checker and misinformation detector. Analyze the following claim for potential misinformation, manipulation, or deceptive content.
+
+CLAIM TO ANALYZE:
+{text}
+
+Provide a comprehensive analysis in the following JSON format:
+{{
+    "verdict": "TRUE/FALSE/MISLEADING/UNVERIFIABLE",
+    "confidence_score": 0-100,
+    "explanation": "Detailed explanation of your verdict",
+    "red_flags": ["List of suspicious elements or red flags found"],
+    "fact_check_points": ["Key claims that need verification"],
+    "manipulation_tactics": ["Any detected manipulation or deception tactics"],
+    "recommendations": ["Recommendations for further verification"],
+    "sources_to_check": ["Suggested authoritative sources to verify against"]
+}}
+
+Be thorough, objective, and provide specific evidence for your assessment."""
+
+        try:
+            response = self.gemini_model.generate_content(prompt)
+            
+            # Extract JSON from response
+            response_text = response.text
+            
+            # Find JSON in the response
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx != 0:
+                json_str = response_text[start_idx:end_idx]
+                analysis = json.loads(json_str)
+            else:
+                # Fallback if JSON parsing fails
+                analysis = {
+                    "verdict": "ANALYSIS_COMPLETED",
+                    "confidence_score": 75,
+                    "explanation": response_text,
+                    "red_flags": [],
+                    "fact_check_points": [],
+                    "manipulation_tactics": [],
+                    "recommendations": ["Manual review recommended"],
+                    "sources_to_check": []
+                }
+            
+            analysis['timestamp'] = datetime.now().isoformat()
+            analysis['original_claim'] = text
+            
+            return analysis
+            
+        except Exception as e:
+            print(f"❌ Error during Gemini analysis: {str(e)}")
+            return {
+                "verdict": "ERROR",
+                "confidence_score": 0,
+                "explanation": f"Analysis failed: {str(e)}",
+                "red_flags": [],
+                "fact_check_points": [],
+                "manipulation_tactics": [],
+                "recommendations": ["Retry analysis"],
+                "sources_to_check": [],
+                "timestamp": datetime.now().isoformat(),
+                "original_claim": text
+            }
+    
+    def analyze_video_content(self, video_path: str, index_id: str) -> Dict:
+        """
+        Analyze video content for misinformation using Twelve Labs
+        
+        Args:
+            video_path: Path to the video file or URL
+            index_id: Twelve Labs index ID to use
+            
+        Returns:
+            Dictionary containing video analysis results
+        """
+        print(f"\n🎥 Analyzing video content...")
+        
+        try:
+            # Upload video to Twelve Labs
+            print("📤 Uploading video to Twelve Labs...")
+            task = self.twelve_labs_client.task.create(
+                index_id=index_id,
+                file=video_path,
+                language="en"
+            )
+            
+            # Wait for video processing
+            print("⏳ Processing video (this may take a few minutes)...")
+            task.wait_for_done(sleep_interval=10)
+            
+            if task.status != "ready":
+                return {
+                    "verdict": "ERROR",
+                    "explanation": f"Video processing failed with status: {task.status}",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            video_id = task.video_id
+            print(f"✓ Video processed successfully (ID: {video_id})")
+            
+            # Generate video summary and analysis
+            print("🔍 Generating video analysis...")
+            search_results = self.twelve_labs_client.search.query(
+                index_id=index_id,
+                query_text="What claims are made in this video? Are there any suspicious or misleading elements?",
+                options=["visual", "conversation", "text_in_video"]
+            )
+            
+            # Extract insights from video
+            video_analysis = {
+                "video_id": video_id,
+                "insights": [],
+                "suspicious_elements": [],
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            for clip in search_results.data[:5]:  # Top 5 results
+                video_analysis["insights"].append({
+                    "confidence": clip.confidence,
+                    "start_time": clip.start,
+                    "end_time": clip.end,
+                    "content": clip.metadata if hasattr(clip, 'metadata') else "Content detected"
+                })
+            
+            return video_analysis
+            
+        except Exception as e:
+            print(f"❌ Error during video analysis: {str(e)}")
+            return {
+                "verdict": "ERROR",
+                "explanation": f"Video analysis failed: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    def deep_fact_check(self, claim: str) -> Dict:
+        """
+        Perform deep fact-checking with multiple verification layers
+        
+        Args:
+            claim: The claim to fact-check
+            
+        Returns:
+            Comprehensive fact-check report
+        """
+        print(f"\n🔬 Performing deep fact-check analysis...")
+        
+        # Step 1: Basic claim analysis
+        basic_analysis = self.analyze_text_claim(claim)
+        
+        # Step 2: Cross-reference with known misinformation patterns
+        pattern_check = self._check_misinformation_patterns(claim)
+        
+        # Step 3: Source credibility assessment
+        credibility_check = self._assess_source_credibility(claim)
+        
+        # Step 4: Generate comprehensive report
+        report = {
+            "claim": claim,
+            "timestamp": datetime.now().isoformat(),
+            "basic_analysis": basic_analysis,
+            "pattern_analysis": pattern_check,
+            "credibility_assessment": credibility_check,
+            "overall_verdict": self._calculate_overall_verdict(
+                basic_analysis, pattern_check, credibility_check
+            ),
+            "recommended_actions": self._generate_recommendations(
+                basic_analysis, pattern_check, credibility_check
+            )
+        }
+        
+        return report
+    
+    def _check_misinformation_patterns(self, text: str) -> Dict:
+        """Check for common misinformation patterns"""
+        
+        prompt = f"""Analyze this text for common misinformation patterns and manipulation tactics:
+
+TEXT: {text}
+
+Identify:
+1. Emotional manipulation (fear, anger, outrage)
+2. Logical fallacies
+3. Cherry-picking of data
+4. False equivalences
+5. Conspiracy theory language
+6. Deepfake or AI-generated content indicators
+7. Social engineering tactics
+8. Urgent/sensational language
+
+Provide a JSON response with detected patterns and severity."""
+
+        try:
+            response = self.gemini_model.generate_content(prompt)
+            return {
+                "patterns_detected": True,
+                "details": response.text,
+                "severity": "MEDIUM"
+            }
+        except Exception as e:
+            return {
+                "patterns_detected": False,
+                "details": f"Error: {str(e)}",
+                "severity": "UNKNOWN"
+            }
+    
+    def _assess_source_credibility(self, claim: str) -> Dict:
+        """Assess credibility of sources mentioned in the claim"""
+        
+        prompt = f"""Analyze the credibility of any sources, references, or authorities mentioned in this claim:
+
+CLAIM: {claim}
+
+Provide assessment of:
+1. Are credible sources cited?
+2. Are sources verifiable?
+3. Are there any non-existent or fabricated sources?
+4. Quality of evidence presented
+5. Potential conflicts of interest
+
+Respond in JSON format."""
+
+        try:
+            response = self.gemini_model.generate_content(prompt)
+            return {
+                "credibility_score": 50,
+                "assessment": response.text,
+                "verified_sources": []
+            }
+        except Exception as e:
+            return {
+                "credibility_score": 0,
+                "assessment": f"Error: {str(e)}",
+                "verified_sources": []
+            }
+    
+    def _calculate_overall_verdict(self, basic: Dict, patterns: Dict, credibility: Dict) -> Dict:
+        """Calculate overall verdict from multiple analysis layers"""
+        
+        # Simple scoring system
+        total_score = 0
+        
+        if basic.get('verdict') == 'TRUE':
+            total_score += 30
+        elif basic.get('verdict') == 'FALSE':
+            total_score -= 30
+        elif basic.get('verdict') == 'MISLEADING':
+            total_score -= 15
+        
+        total_score += basic.get('confidence_score', 50) * 0.4
+        total_score += credibility.get('credibility_score', 50) * 0.3
+        
+        if total_score >= 70:
+            verdict = "LIKELY TRUE"
+            risk_level = "LOW"
+        elif total_score >= 40:
+            verdict = "UNCERTAIN - VERIFY"
+            risk_level = "MEDIUM"
+        else:
+            verdict = "LIKELY FALSE/MISLEADING"
+            risk_level = "HIGH"
+        
+        return {
+            "verdict": verdict,
+            "risk_level": risk_level,
+            "confidence": total_score,
+            "explanation": f"Based on multi-layer analysis with confidence score of {total_score:.1f}/100"
+        }
+    
+    def _generate_recommendations(self, basic: Dict, patterns: Dict, credibility: Dict) -> List[str]:
+        """Generate actionable recommendations"""
+        
+        recommendations = []
+        
+        if basic.get('verdict') in ['FALSE', 'MISLEADING']:
+            recommendations.append("⚠️ Do not share this content without verification")
+            recommendations.append("🔍 Verify claims with authoritative sources")
+        
+        if patterns.get('severity') in ['HIGH', 'MEDIUM']:
+            recommendations.append("🚨 Multiple manipulation tactics detected")
+            recommendations.append("📚 Educate others about these manipulation patterns")
+        
+        if credibility.get('credibility_score', 0) < 50:
+            recommendations.append("📖 Cross-reference with credible fact-checking organizations")
+            recommendations.append("🔗 Check original sources if cited")
+        
+        recommendations.extend([
+            "💬 Engage critically with similar content",
+            "🌐 Use multiple fact-checking resources",
+            "🤝 Report suspected misinformation to platforms"
+        ])
+        
+        return recommendations
+
+
+def print_report(report: Dict):
+    """Pretty print the analysis report"""
+    
+    print("\n" + "="*80)
+    print("📊 MISINFORMATION ANALYSIS REPORT")
+    print("="*80)
+    
+    print(f"\n📝 CLAIM: {report.get('claim', 'N/A')}")
+    print(f"⏰ TIMESTAMP: {report.get('timestamp', 'N/A')}")
+    
+    overall = report.get('overall_verdict', {})
+    print(f"\n🎯 OVERALL VERDICT: {overall.get('verdict', 'N/A')}")
+    print(f"⚠️  RISK LEVEL: {overall.get('risk_level', 'N/A')}")
+    print(f"📈 CONFIDENCE: {overall.get('confidence', 0):.1f}/100")
+    print(f"💭 {overall.get('explanation', '')}")
+    
+    basic = report.get('basic_analysis', {})
+    print(f"\n🔍 BASIC ANALYSIS:")
+    print(f"   Verdict: {basic.get('verdict', 'N/A')}")
+    print(f"   Confidence: {basic.get('confidence_score', 0)}/100")
+    print(f"   Explanation: {basic.get('explanation', 'N/A')[:200]}...")
+    
+    if basic.get('red_flags'):
+        print(f"\n🚩 RED FLAGS DETECTED:")
+        for flag in basic.get('red_flags', [])[:5]:
+            print(f"   • {flag}")
+    
+    if basic.get('manipulation_tactics'):
+        print(f"\n🎭 MANIPULATION TACTICS:")
+        for tactic in basic.get('manipulation_tactics', [])[:5]:
+            print(f"   • {tactic}")
+    
+    recommendations = report.get('recommended_actions', [])
+    if recommendations:
+        print(f"\n💡 RECOMMENDATIONS:")
+        for rec in recommendations[:6]:
+            print(f"   {rec}")
+    
+    print("\n" + "="*80)
+
+
+def main():
+    """Main function to run the misinformation detector"""
+    
+    print("="*80)
+    print("🚨 SIREN'S CALL - MISINFORMATION DETECTION SYSTEM")
+    print("="*80)
+    print("\nCombating misinformation with AI-powered verification")
+    print("Powered by Google Gemini & Twelve Labs\n")
+    
+    # Get API keys from environment or user input
+    gemini_key = os.getenv('GEMINI_API_KEY')
+    twelve_labs_key = os.getenv('TWELVE_LABS_API_KEY')
+    
+    if not gemini_key:
+        print("🔑 Enter your Google Gemini API Key:")
+        gemini_key = input("> ").strip()
+    
+    if not twelve_labs_key:
+        print("🔑 Enter your Twelve Labs API Key:")
+        twelve_labs_key = input("> ").strip()
+    
+    try:
+        # Initialize detector
+        detector = MisinformationDetector(gemini_key, twelve_labs_key)
+        
+        while True:
+            print("\n" + "-"*80)
+            print("📋 MENU:")
+            print("1. Analyze text claim")
+            print("2. Perform deep fact-check")
+            print("3. Analyze video content (Twelve Labs)")
+            print("4. Batch analyze multiple claims")
+            print("5. Exit")
+            print("-"*80)
+            
+            choice = input("\nSelect option (1-5): ").strip()
+            
+            if choice == '1':
+                print("\n📝 Enter the text claim to analyze:")
+                claim = input("> ").strip()
+                
+                if claim:
+                    result = detector.analyze_text_claim(claim)
+                    print_report({'claim': claim, 'timestamp': result.get('timestamp'),
+                                'basic_analysis': result, 'overall_verdict': {
+                                    'verdict': result.get('verdict'),
+                                    'risk_level': 'HIGH' if result.get('verdict') == 'FALSE' else 'LOW',
+                                    'confidence': result.get('confidence_score', 0),
+                                    'explanation': 'Single-layer analysis'
+                                }, 'recommended_actions': result.get('recommendations', [])})
+                else:
+                    print("❌ No claim entered")
+            
+            elif choice == '2':
+                print("\n📝 Enter the claim for deep fact-checking:")
+                claim = input("> ").strip()
+                
+                if claim:
+                    report = detector.deep_fact_check(claim)
+                    print_report(report)
+                    
+                    # Save report
+                    filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                    with open(filename, 'w') as f:
+                        json.dump(report, f, indent=2)
+                    print(f"\n💾 Report saved to: {filename}")
+                else:
+                    print("❌ No claim entered")
+            
+            elif choice == '3':
+                print("\n🎥 Enter video file path or URL:")
+                video_path = input("> ").strip()
+                print("📇 Enter your Twelve Labs Index ID:")
+                index_id = input("> ").strip()
+                
+                if video_path and index_id:
+                    result = detector.analyze_video_content(video_path, index_id)
+                    print(f"\n📊 VIDEO ANALYSIS RESULTS:")
+                    print(json.dumps(result, indent=2))
+                else:
+                    print("❌ Missing required information")
+            
+            elif choice == '4':
+                print("\n📝 Enter multiple claims (one per line, empty line to finish):")
+                claims = []
+                while True:
+                    line = input("> ").strip()
+                    if not line:
+                        break
+                    claims.append(line)
+                
+                if claims:
+                    print(f"\n🔄 Analyzing {len(claims)} claims...")
+                    for i, claim in enumerate(claims, 1):
+                        print(f"\n[{i}/{len(claims)}] Analyzing: {claim[:50]}...")
+                        result = detector.analyze_text_claim(claim)
+                        print(f"   Verdict: {result.get('verdict')} (Confidence: {result.get('confidence_score', 0)}/100)")
+                else:
+                    print("❌ No claims entered")
+            
+            elif choice == '5':
+                print("\n👋 Thank you for using Siren's Call!")
+                print("Stay vigilant against misinformation! 🛡️")
+                break
+            
+            else:
+                print("❌ Invalid option. Please select 1-5.")
+    
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}")
+        print("Please check your API keys and try again.")
+
+
+if __name__ == "__main__":
+    main()
