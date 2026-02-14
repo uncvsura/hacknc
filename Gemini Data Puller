@@ -1,23 +1,55 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// 1. Configuration
+// 1. Setup - Use your API key from Google AI Studio
 const genAI = new GoogleGenerativeAI("YOUR_API_KEY");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-async function processRawData(dataString) {
-  try {
-    // 2. Sending the raw string
-    const result = await model.generateContent(dataString);
-    const response = await result.response;
+// Initialize model with Google Search Tool for live data analysis
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-flash",
+  tools: [{ googleSearch: {} }] 
+});
+
+async function processWebFactCheck(userInput) {
+  const prompt = `
+    TASK: Break the following text into individual sentences. 
+    Use Google Search to verify if each sentence is FACTUALLY CORRECT.
     
-    // 3. Getting the text answer back
-    const text = response.text();
-    console.log("Gemini's Answer:", text);
+    TEXT: "${userInput}"
+    
+    RESPONSE FORMAT: You must return ONLY a JSON array of objects:
+    [{"text": "sentence", "is_wrong": false}, {"text": "sentence", "is_wrong": true}]
+  `;
+
+  try {
+    // Generate content using JSON mode
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    // Parse the JSON list of sentences
+    const analysis = JSON.parse(result.response.text());
+
+    // 2. Highlighting Logic (Formatted for Web/HTML)
+    const highlightedHTML = analysis.map(item => {
+      if (item.is_wrong) {
+        // Red, bold, and underlined for errors
+        return `<span style="color: red; font-weight: bold; text-decoration: underline;">${item.text}</span>`;
+      }
+      // Normal span for correct info
+      return `<span>${item.text}</span>`;
+    }).join(" ");
+
+    console.log("--- FINAL HTML OUTPUT ---");
+    console.log(highlightedHTML);
+    
+    return highlightedHTML;
+
   } catch (error) {
-    console.error("API Error:", error.message);
+    console.error("Analysis Error:", error);
   }
 }
 
-// Example usage
-const myRawText = "Here is the raw data I want you to analyze: [Data Content]";
-processRawData(myRawText);
+// 3. Execution - Test with any random paragraph
+const myInput = "The sky is blue. Apples can be blue if grown in a plantation. Mars is the fourth planet from the sun. Humans can breathe underwater without equipment.";
+processWebFactCheck(myInput);
