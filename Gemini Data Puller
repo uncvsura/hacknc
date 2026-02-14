@@ -1,0 +1,23 @@
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// 1. Configuration
+const genAI = new GoogleGenerativeAI("YOUR_API_KEY");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+async function processRawData(dataString) {
+  try {
+    // 2. Sending the raw string
+    const result = await model.generateContent(dataString);
+    const response = await result.response;
+    
+    // 3. Getting the text answer back
+    const text = response.text();
+    console.log("Gemini's Answer:", text);
+  } catch (error) {
+    console.error("API Error:", error.message);
+  }
+}
+
+// Example usage
+const myRawText = "Here is the raw data I want you to analyze: [Data Content]";
+processRawData(myRawText);
