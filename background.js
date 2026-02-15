@@ -10,7 +10,7 @@ const MODELS_TO_TRY = [
   "gemini-2.0-flash",
 ];
 
-const SYSTEM_PROMPT = `You are an expert fact-checker and media analyst. Your task is to evaluate a news article for accuracy and potential misinformation.
+const SYSTEM_PROMPT = `You are an expert fact-checker and media analyst. Your task is to evaluate a news article for accuracy and potential misinformation, and to assess its editorial/political bias.
 
 Consider:
 - Whether claims are verifiable or speculative
@@ -20,11 +20,17 @@ Consider:
 - Sensationalism vs. measured tone
 - Today is feb 16 2026
 - Comparison to reputable sources
+- For BIAS: overall political/editorial leaning (Left, Center, Right) and strength (Low, Moderate, High)
 Respond in this exact format only (no other text):
 SCORE: [integer from 1 to 10]
+BIAS: [Left|Center|Right], [Low|Moderate|High]
+QUOTES:
+- "[Exact quote from article]" — [One sentence explaining why it is factually wrong or biased]
+- "[Another quote]" — [One sentence reason]
+- [Up to 5 entries; use "- None identified" if no clear false or biased quotes]
 SUMMARY: [your full explanation in one or two sentences]
 
-Where 10 = no significant misinformation, factual and balanced; 1 = highly misleading or containing clear misinformation.`;
+Where 10 = no significant misinformation, factual and balanced; 1 = highly misleading or containing clear misinformation. List only actual phrases/sentences from the article that are false, misleading, or clearly biased.`;
 
 function buildPrompt(articleText) {
   const truncated =
@@ -35,19 +41,50 @@ function buildPrompt(articleText) {
 }
 
 function parseGeminiResponse(text) {
-  if (!text || typeof text !== "string") return { score: null, summary: "" };
+  if (!text || typeof text !== "string")
+    return { score: null, summary: "", bias: null, quotes: [] };
   const scoreMatch = text.match(/SCORE:\s*(\d+)/i);
   const score = scoreMatch
     ? Math.min(10, Math.max(1, parseInt(scoreMatch[1], 10)))
     : null;
-  // Capture everything after "SUMMARY:" to end of response (full summary, no truncation)
+  const biasMatch = text.match(/BIAS:\s*([^\n,]+),\s*([^\n]+?)(?=\s*QUOTES:|\s*SUMMARY:|$)/i);
+  let bias = null;
+  if (biasMatch) {
+    const leaning = (biasMatch[1] || "").trim();
+    const strength = (biasMatch[2] || "").trim();
+    if (/left|center|right/i.test(leaning))
+      bias = { leaning, strength };
+  }
+  let quotes = [];
+  const quotesLabel = text.match(/\bQUOTES:\s*/i);
+  if (quotesLabel) {
+    const start = text.indexOf(quotesLabel[0]) + quotesLabel[0].length;
+    const end = text.search(/\s*SUMMARY:\s*/i);
+    const block = end >= 0 ? text.slice(start, end) : text.slice(start);
+    const lines = block
+      .split(/\n/)
+      .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+      .filter((line) => line.length > 0 && !/^none identified$/i.test(line));
+    for (const line of lines) {
+      const dash = line.match(/\s+[—–-]\s+/);
+      if (dash) {
+        const idx = line.indexOf(dash[0]);
+        let quoteText = line.slice(0, idx).trim().replace(/^["']|["']$/g, "");
+        const reason = line.slice(idx + dash[0].length).trim();
+        if (quoteText.length > 0) quotes.push({ text: quoteText, reason: reason || "Flagged as potentially problematic." });
+      } else if (line.length > 0) {
+        const quoteText = line.replace(/^["']|["']$/g, "").trim();
+        if (quoteText.length > 0) quotes.push({ text: quoteText, reason: "Flagged as potentially problematic." });
+      }
+    }
+  }
   const summaryLabel = text.match(/\bSUMMARY:\s*/i);
   let summary = "";
   if (summaryLabel) {
     const start = text.indexOf(summaryLabel[0]) + summaryLabel[0].length;
     summary = text.slice(start).trim().replace(/\s+/g, " ");
   }
-  return { score, summary };
+  return { score, summary, bias, quotes };
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -104,12 +141,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return { ok: false, error: "Empty or invalid response from Gemini" };
         }
 
-        const { score, summary } = parseGeminiResponse(content);
+        const { score, summary, bias, quotes } = parseGeminiResponse(content);
         if (score === null) {
           return { ok: false, error: "Could not parse score from response" };
         }
 
-        return { ok: true, score, summary };
+        return { ok: true, score, summary, bias, quotes };
       } catch (e) {
         lastError = e.message || "Network or request failed";
       }
@@ -122,3 +159,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; // keep message channel open for async sendResponse
 });
 
+  
