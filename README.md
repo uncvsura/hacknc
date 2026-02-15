@@ -9,6 +9,8 @@ scholarly or opinionated news articles on the fly via a stylized, toggleable tex
 ## How to use
 Clone the GitHub Repo
 
+Add your API Key to the background.js file
+
 Open chrome://extensions/ on any chromium-powered browser
 
 Turn on developer mode in the top right
