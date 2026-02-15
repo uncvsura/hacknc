@@ -2,6 +2,7 @@
 // Extracts article text and displays accuracy score from Gemini
 
 const ACCURACY_BOX_ID = "article-accuracy-box";
+const ACCURACY_BOX_TAB_ID = "accuracy-box-tab";
 const FACT_CHECK_PROMPT_ID = "fact-check-prompt";
 
 function escapeHtml(str) {
@@ -82,6 +83,7 @@ function createFactCheckPrompt() {
   prompt.className = "fact-check-prompt";
   prompt.innerHTML = `
       <div class="fact-check-prompt__actions">
+        <p class="fact-check-label">Fact Check?</p>
         <button type="button" class="fact-check-prompt__btn" id="fact-check-yes">Yes, check it</button>
         <button type="button" class="fact-check-prompt__btn fact-check-prompt__btn--secondary" id="fact-check-no">Not now</button>
       </div>
@@ -118,7 +120,9 @@ function runArticleCheck(optCallback) {
     return;
   }
   const box = createScoreBox();
-  box.classList.remove("accuracy-box--hidden");
+  box.classList.remove("accuracy-box--hidden", "accuracy-box--minimized");
+  const tab = document.getElementById(ACCURACY_BOX_TAB_ID);
+  if (tab) tab.classList.remove("accuracy-box-tab--visible");
   setStatus("Analyzing…");
   chrome.runtime.sendMessage({ action: "analyzeArticle", text }, (response) => {
     if (chrome.runtime.lastError) {
@@ -253,7 +257,7 @@ function createScoreBox() {
   box.innerHTML = `
       <div class="accuracy-box__header">
         <span class="accuracy-box__title">Fact check</span>
-        <button type="button" class="accuracy-box__close" aria-label="Close">&times;</button>
+        <button type="button" class="accuracy-box__hide" aria-label="Hide">Hide</button>
       </div>
       <div class="accuracy-box__body">
         <div class="accuracy-box__gauges">
@@ -287,9 +291,26 @@ function createScoreBox() {
       </div>
     `;
 
-  box.querySelector(".accuracy-box__close").addEventListener("click", () => {
-    box.classList.add("accuracy-box--hidden");
+  box.querySelector(".accuracy-box__hide").addEventListener("click", () => {
+    box.classList.add("accuracy-box--minimized");
+    const tab = document.getElementById(ACCURACY_BOX_TAB_ID);
+    if (tab) tab.classList.add("accuracy-box-tab--visible");
   });
+
+  let tab = document.getElementById(ACCURACY_BOX_TAB_ID);
+  if (!tab) {
+    tab = document.createElement("button");
+    tab.type = "button";
+    tab.id = ACCURACY_BOX_TAB_ID;
+    tab.className = "accuracy-box-tab";
+    tab.setAttribute("aria-label", "Show fact check");
+    tab.textContent = "Veracity";
+    tab.addEventListener("click", () => {
+      box.classList.remove("accuracy-box--minimized");
+      tab.classList.remove("accuracy-box-tab--visible");
+    });
+    document.body.appendChild(tab);
+  }
 
   const readMoreBtn = box.querySelector("#accuracy-read-more");
   const summaryWrap = box.querySelector("#accuracy-summary-wrap");
@@ -346,7 +367,23 @@ function showScore(score, statusText, bias, quotes) {
       "accuracy-box--low",
     );
     box.classList.add(`accuracy-box--${level}`);
-    if (gaugeEl) gaugeEl.style.setProperty("--gauge-value", pct);
+    if (gaugeEl) {
+      gaugeEl.style.setProperty("--gauge-value", "0");
+      gaugeEl.classList.add("accuracy-box__gauge--animating");
+      let step = 0;
+      const segmentPct = 10;
+      const segmentMs = 85;
+      const steps = Math.ceil(pct / segmentPct);
+      const interval = setInterval(() => {
+        step += 1;
+        const value = Math.min(step * segmentPct, pct);
+        gaugeEl.style.setProperty("--gauge-value", String(value));
+        if (value >= pct) {
+          clearInterval(interval);
+          gaugeEl.classList.remove("accuracy-box__gauge--animating");
+        }
+      }, segmentMs);
+    }
   } else {
     scoreEl.textContent = "—";
     if (gaugeEl) gaugeEl.style.removeProperty("--gauge-value");
@@ -431,6 +468,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === "checkArticle") {
     const prompt = document.getElementById(FACT_CHECK_PROMPT_ID);
     if (prompt) prompt.classList.add("fact-check-prompt--hidden");
+    const box = document.getElementById(ACCURACY_BOX_ID);
+    if (box) {
+      box.classList.remove("accuracy-box--minimized");
+      const tab = document.getElementById(ACCURACY_BOX_TAB_ID);
+      if (tab) tab.classList.remove("accuracy-box-tab--visible");
+    }
     runArticleCheck(sendResponse);
     return true; // keep channel open for async sendResponse
   }
