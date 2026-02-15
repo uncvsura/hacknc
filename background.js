@@ -26,6 +26,8 @@ Consider:
 - Sensationalism vs. measured tone
 - Today is feb 16 2026
 - Comparison to reputable sources
+- If the source is deemed to be a 9 or simply has no issues with veracity in terms of factuality then report a score of 10.
+- If the source is a scientific paper that is reputable, focus purely on the factual accuracy.
 - For BIAS: overall political/editorial leaning (Left, Center, Right) and strength (Low, Moderate, High)
 Respond in this exact format only (no other text):
 SCORE: [integer from 1 to 10]
@@ -53,13 +55,14 @@ function parseGeminiResponse(text) {
   const score = scoreMatch
     ? Math.min(10, Math.max(1, parseInt(scoreMatch[1], 10)))
     : null;
-  const biasMatch = text.match(/BIAS:\s*([^\n,]+),\s*([^\n]+?)(?=\s*QUOTES:|\s*SUMMARY:|$)/i);
+  const biasMatch = text.match(
+    /BIAS:\s*([^\n,]+),\s*([^\n]+?)(?=\s*QUOTES:|\s*SUMMARY:|$)/i,
+  );
   let bias = null;
   if (biasMatch) {
     const leaning = (biasMatch[1] || "").trim();
     const strength = (biasMatch[2] || "").trim();
-    if (/left|center|right/i.test(leaning))
-      bias = { leaning, strength };
+    if (/left|center|right/i.test(leaning)) bias = { leaning, strength };
   }
   let quotes = [];
   const quotesLabel = text.match(/\bQUOTES:\s*/i);
@@ -75,12 +78,23 @@ function parseGeminiResponse(text) {
       const dash = line.match(/\s+[—–-]\s+/);
       if (dash) {
         const idx = line.indexOf(dash[0]);
-        let quoteText = line.slice(0, idx).trim().replace(/^["']|["']$/g, "");
+        let quoteText = line
+          .slice(0, idx)
+          .trim()
+          .replace(/^["']|["']$/g, "");
         const reason = line.slice(idx + dash[0].length).trim();
-        if (quoteText.length > 0) quotes.push({ text: quoteText, reason: reason || "Flagged as potentially problematic." });
+        if (quoteText.length > 0)
+          quotes.push({
+            text: quoteText,
+            reason: reason || "Flagged as potentially problematic.",
+          });
       } else if (line.length > 0) {
         const quoteText = line.replace(/^["']|["']$/g, "").trim();
-        if (quoteText.length > 0) quotes.push({ text: quoteText, reason: "Flagged as potentially problematic." });
+        if (quoteText.length > 0)
+          quotes.push({
+            text: quoteText,
+            reason: "Flagged as potentially problematic.",
+          });
       }
     }
   }
@@ -100,9 +114,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   (async () => {
-    const apiKey = GEMINI_API_KEY && GEMINI_API_KEY.trim() ? GEMINI_API_KEY.trim() : null;
+    const apiKey =
+      GEMINI_API_KEY && GEMINI_API_KEY.trim() ? GEMINI_API_KEY.trim() : null;
     if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
-      return { ok: false, error: "No API key. Set GEMINI_API_KEY in background.js." };
+      return {
+        ok: false,
+        error: "No API key. Set GEMINI_API_KEY in background.js.",
+      };
     }
 
     const body = {
@@ -164,5 +182,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true; // keep message channel open for async sendResponse
 });
-
-  
