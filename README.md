@@ -29,3 +29,14 @@ Frontend Deployment: Keshav Bali
 UI/UX Design: Nihar Rai
 
 ### Powered by Gemini-Pro-3.0 🚀
+
+### Test Cases:
+
+### Carolina Journal
+https://www.carolinajournal.com/judge-says-nc-election-board-violated-own-rules-orders-hearing/
+
+### Al Jazeera
+https://www.aljazeera.com/news/2026/2/15/gunmen-kill-at-least-32-people-in-northern-nigeria-residents-say
+
+### The Onion
+https://theonion.com/finnish-ski-jumping-team-caught-tampering-with-earths-gravitational-field/
