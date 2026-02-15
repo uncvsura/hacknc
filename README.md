@@ -18,6 +18,6 @@ Done! Open any article and choose whether you want to fact-check it or not via t
 ### Powered by Gemini-Pro-3.0 🚀
 
 ## Authors:
-Backend API Implementation  - Shishir Bhimavarapu, Venkata Sura
-Frontend Deployment         - Keshav Bali
-UI/UX Design                - Nihar Rai
+Backend API Implementation - Shishir Bhimavarapu, Venkata Sura
+Frontend Deployment - Keshav Bali
+UI/UX Design - Nihar Rai
