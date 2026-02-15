@@ -1,6 +1,9 @@
 // Article Accuracy Checker - Background Service Worker
 // Calls Gemini API to analyze article text for accuracy/misinformation
 
+// Set your Gemini API key here (get one at https://aistudio.google.com/apikey)
+const GEMINI_API_KEY = "AIzaSyCM3jRdsjmEJdZWB3HZzPeBhMiPKQFUyz8";
+
 const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 // Models to try in order (first with free-tier quota; fallback if not found)
@@ -97,9 +100,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   (async () => {
-    const { apiKey } = await chrome.storage.sync.get("apiKey");
-    if (!apiKey || !apiKey.trim()) {
-      return { ok: false, error: "No API key. Set it in the extension popup." };
+    const apiKey = GEMINI_API_KEY && GEMINI_API_KEY.trim() ? GEMINI_API_KEY.trim() : null;
+    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+      return { ok: false, error: "No API key. Set GEMINI_API_KEY in background.js." };
     }
 
     const body = {
@@ -113,7 +116,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     let lastError = "";
     for (const model of MODELS_TO_TRY) {
       try {
-        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
