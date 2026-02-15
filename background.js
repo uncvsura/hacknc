@@ -5,6 +5,9 @@ const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 // Models to try in order (first with free-tier quota; fallback if not found)
 const MODELS_TO_TRY = [
+  "gemini-pro-latest",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
   "gemini-2.5-flash",
   "gemini-1.5-flash-8b",
   "gemini-2.0-flash",

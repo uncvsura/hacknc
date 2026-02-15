@@ -401,9 +401,10 @@
     background: rgba(0, 0, 0, 0.3);
 }
 
-/* In-article highlight for false or biased quotes */
+/* In-article highlight for false or biased quotes – explicit color so we don't inherit blue/link color on dark pages */
 .veracity-highlight {
-    background: rgba(234, 179, 8, 0.35);
+    background: rgba(234, 179, 8, 0.5);
+    color: #1e293b;
     padding: 0 2px;
     border-radius: 2px;
     cursor: help;
