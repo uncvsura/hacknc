@@ -1,0 +1,142 @@
+/* Article Accuracy Checker - overlay box */
+
+#article-accuracy-box {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 260px;
+    height: 100vh;
+    z-index: 2147483646;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+        sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    background: #1a1a2e;
+    color: #eee;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition:
+        opacity 0.2s,
+        transform 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+#article-accuracy-box.accuracy-box--hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+}
+
+#article-accuracy-box.accuracy-box--high {
+    border-left: 4px solid #22c55e;
+}
+
+#article-accuracy-box.accuracy-box--medium {
+    border-left: 4px solid #eab308;
+}
+
+#article-accuracy-box.accuracy-box--low {
+    border-left: 4px solid #ef4444;
+}
+
+.accuracy-box__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.accuracy-box__title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.accuracy-box__close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.accuracy-box__close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.accuracy-box__body {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.accuracy-box__score-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.accuracy-box__score {
+    font-size: 28px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.accuracy-box__score.accuracy-box__score--set {
+    color: #e2e8f0;
+}
+
+.accuracy-box__max {
+    font-size: 16px;
+    color: #64748b;
+}
+
+.accuracy-box__hint {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.accuracy-box__status {
+    margin: 0;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #94a3b8;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    word-wrap: break-word;
+}
+
+/* Visible scrollbar so summary can be scrolled with mouse wheel */
+.accuracy-box__status::-webkit-scrollbar {
+    width: 6px;
+}
+
+.accuracy-box__status::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+}
+
+.accuracy-box__status::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+}
+
+.accuracy-box__status::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+

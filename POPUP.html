@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Article Accuracy Checker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      font-size: 14px;
+    }
+    h1 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: #374151;
+    }
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    button {
+      width: 100%;
+      padding: 10px 16px;
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { background: #16213e; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 12px;
+    }
+    .hint a { color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <h1>Article Accuracy Checker</h1>
+  <label for="api-key">Gemini API key</label>
+  <input type="password" id="api-key" placeholder="Enter your API key" autocomplete="off">
+  <button id="save">Save</button>
+  <button id="check" style="margin-top: 8px;">Check this article</button>
+  <p class="hint">
+    Get a free API key at
+    <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>.
+    Then open a news article and click "Check this article".
+  </p>
+  <script src="popup.js"></script>
+</body>
+</html>
+
