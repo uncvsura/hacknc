@@ -2,7 +2,7 @@
 // Calls Gemini API to analyze article text for accuracy/misinformation
 
 // Set your Gemini API key here (get one at https://aistudio.google.com/apikey)
-const GEMINI_API_KEY = "AIzaSyCM3jRdsjmEJdZWB3HZzPeBhMiPKQFUyz8";
+const GEMINI_API_KEY = "API KEY GOES HERE";
 
 const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
