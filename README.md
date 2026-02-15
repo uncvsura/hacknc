@@ -8,16 +8,25 @@ scholarly or opinionated news articles on the fly via a stylized, toggleable tex
 
 ## How to use
 Clone the GitHub Repo
+
 Open chrome://extensions/ on any chromium-powered browser
+
 Turn on developer mode in the top right
+
 Select the "Load unpacked" Option on the top left
+
 Select the GitHub repo folder
+
 Activate the extension (once) to initiliaze
+
 Done! Open any article and choose whether you want to fact-check it or not via the pop-up on the top right.
 
 ### Powered by Gemini-Pro-3.0 🚀
 
 ## Authors:
 Backend API Implementation: Shishir Bhimavarapu, Venkata Sura
+
 Frontend Deployment: Keshav Bali
+
 UI/UX Design: Nihar Rai
+
